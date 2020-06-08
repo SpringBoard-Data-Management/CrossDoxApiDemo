@@ -2,6 +2,8 @@
 An example of using the CrossDox API using a simple console application
 
 # Build
-Clone this repo
-Use the App.config template to create the App.config file
+Clone this repo.
+
+Use the App.config template to create the App.config file.
+
 Build and run.
