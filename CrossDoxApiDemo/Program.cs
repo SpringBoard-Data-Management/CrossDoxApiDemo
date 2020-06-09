@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 
 namespace CrossDoxApiDemo
 {
@@ -14,63 +14,44 @@ namespace CrossDoxApiDemo
             string username = ConfigurationManager.AppSettings["ApiUsername"];
             string password = ConfigurationManager.AppSettings["ApiPassword"];
 
-            var sourceDir = GetSourceDirectory();
-            var outputDir = GetOutputDirectory();
-            Console.WriteLine($"Source folder: {sourceDir.FullName}");
-            Console.WriteLine($"Output folder: {outputDir.FullName}");
+            DirectoryInfo sourceDir = Directory.CreateDirectory(@"C:\temp\CrossDoxDemo\Source");
+            DirectoryInfo outputDir = Directory.CreateDirectory(@"C:\temp\CrossDoxDemo\Output");
 
-            FileInfo[] files = sourceDir.GetFiles();
-            if (files.Length == 0)
+            FileInfo[] pdfFiles = sourceDir.GetFiles().Where(file => file.Extension.ToLower() == ".pdf").ToArray();
+            if (pdfFiles.Length == 0)
             {
                 Console.WriteLine("Source directory is empty");
-                throw new Exception();
-            }
-
-            List<FileInfo> pdfs = new List<FileInfo>();
-            foreach (FileInfo file in files)
-            {
-                if (file.Extension.ToLower() != ".pdf") continue;
-
-                pdfs.Add(file);
+                return;
             }
 
             CrossDoxApiConsumer crossDox = new CrossDoxApiConsumer(ApiToken, username, password);
+            CrossDoxParsedData parsedData = crossDox.ParseFiles(pdfFiles);
 
-            CrossDoxParsedData parsedData = crossDox.ParseFiles(pdfs.ToArray());
-
-            foreach(var info in parsedData.ParseResponseMetadata)
+            foreach (var info in parsedData.ParseResponseMetadata)
             {
+                Console.WriteLine($"{info.FileName}: {info.Status}");
                 if (info.Status == "Failure")
                 {
-                    Console.WriteLine($"Conversion error: {info.FileName} failed parse");
-
                     // Handle errors
                 }
             }
 
             if (parsedData.ZipCount == 0) return;
 
-            string tmp = Path.GetTempFileName();
-            BinaryWriter writer = new BinaryWriter(File.Open(tmp, FileMode.Create));
-            writer.Write(Convert.FromBase64String(parsedData.ZipBase64));
-            writer.Close();
+            string tmpZip = Path.GetTempFileName();
+            using (BinaryWriter writer = new BinaryWriter(File.Open(tmpZip, FileMode.Create)))
+            {
+                writer.Write(Convert.FromBase64String(parsedData.ZipBase64));
+                writer.Close();
+            }
 
-            ZipFile.ExtractToDirectory(tmp, outputDir.FullName);
+            ZipFile.ExtractToDirectory(tmpZip, outputDir.FullName, overwriteFiles: true);
 
-            File.Delete(tmp);
+            File.Delete(tmpZip);
 
-        }
-
-        static DirectoryInfo GetSourceDirectory()
-        {
-            string tempDirectory = Path.Combine(Path.GetTempPath(), "CrossDoxApiDemo_" + "Source");
-            return Directory.CreateDirectory(tempDirectory);
-        }
-
-        static DirectoryInfo GetOutputDirectory()
-        {
-            string tempDirectory = Path.Combine(Path.GetTempPath(), "CrossDoxApiDemo_" + "Output");
-            return Directory.CreateDirectory(tempDirectory);
+            Console.WriteLine();
+            Console.WriteLine("Done. Press and key to Exit.");
+            Console.ReadKey();
         }
     }
 }

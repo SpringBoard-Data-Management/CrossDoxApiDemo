@@ -10,10 +10,12 @@ namespace CrossDoxApiDemo
 {
     class CrossDoxApiConsumer
     {
-        private static readonly string ApiUrl = "https://api.crossdox.com/";
+        private const string ApiUrl = "https://api.crossdox.com/";
         private static readonly HttpClient client = new HttpClient();
 
         private readonly string token;
+
+
         public CrossDoxApiConsumer(string ApiToken, string userName, string password)
         {
             string ApiPath = "AuthApi/Login";
@@ -21,12 +23,11 @@ namespace CrossDoxApiDemo
 
             req.Headers.Add("ApiToken", ApiToken);
 
-            req.Content = ToContent(
-                new Dictionary<string, string>
-                {
-                  {"UserName", userName},
-                  {"Password", password}
-                });
+            req.Content = ToContent(new Dictionary<string, string>
+            {
+                {"UserName", userName},
+                {"Password", password}
+            });
 
 
             HttpResponseMessage resp = client.SendAsync(req).Result;
@@ -68,9 +69,7 @@ namespace CrossDoxApiDemo
 
         private static StringContent ToContent(string serialized)
         {
-            return new StringContent(serialized,
-                    Encoding.Default,
-                    "application/json");
+            return new StringContent(serialized, Encoding.Default, "application/json");
         }
     }
 }
