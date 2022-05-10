@@ -14,10 +14,12 @@ namespace CrossDoxApiDemo
         private static readonly HttpClient client = new HttpClient();
 
         private readonly string token;
+        private readonly string apiToken;
 
 
         public CrossDoxApiConsumer(string ApiToken, string userName, string password)
         {
+            apiToken = ApiToken;
             string ApiPath = "AuthApi/Login";
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + ApiPath);
 
@@ -62,12 +64,29 @@ namespace CrossDoxApiDemo
             return JsonConvert.DeserializeObject<CrossDoxParsedData>(resp.Content.ReadAsStringAsync().Result);
         }
 
-        private static StringContent ToContent(Object payload)
+        public void UpdateUserPreferences(CrossDoxUserPreferences usersPreferencesModel)
         {
-            return ToContent(JsonConvert.SerializeObject(payload));
+            string ApiPath = "UsersApi/Preferences";
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + ApiPath);
+
+            req.Headers.Add("ApiToken", apiToken);
+            req.Headers.Add("Token", token);
+
+            req.Content = ToContent(usersPreferencesModel);
+
+            HttpResponseMessage resp = client.SendAsync(req).Result;
+            if (!resp.IsSuccessStatusCode)
+            {
+                throw new Exception("API error " + resp.StatusCode); // Do error checking
+            }
         }
 
-        private static StringContent ToContent(string serialized)
+        private static StringContent ToContent(object payload)
+        {
+            return ToStringContent(JsonConvert.SerializeObject(payload));
+        }
+
+        private static StringContent ToStringContent(string serialized)
         {
             return new StringContent(serialized, Encoding.Default, "application/json");
         }

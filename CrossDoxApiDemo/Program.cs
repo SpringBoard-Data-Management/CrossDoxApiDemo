@@ -25,6 +25,7 @@ namespace CrossDoxApiDemo
             }
 
             CrossDoxApiConsumer crossDox = new CrossDoxApiConsumer(ApiToken, username, password);
+            crossDox.UpdateUserPreferences(new() { MergeFiles = true });
             CrossDoxParsedData parsedData = crossDox.ParseFiles(pdfFiles);
 
             foreach (var info in parsedData.ParseResponseMetadata)
