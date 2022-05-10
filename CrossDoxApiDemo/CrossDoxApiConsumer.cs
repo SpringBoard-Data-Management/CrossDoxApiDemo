@@ -13,13 +13,11 @@ namespace CrossDoxApiDemo
         private const string ApiUrl = "https://api.crossdox.com/";
         private static readonly HttpClient client = new HttpClient();
 
-        private readonly string token;
-        private readonly string apiToken;
+        private readonly string SessionToken;
 
 
         public CrossDoxApiConsumer(string ApiToken, string userName, string password)
         {
-            apiToken = ApiToken;
             string ApiPath = "AuthApi/Login";
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + ApiPath);
 
@@ -38,15 +36,14 @@ namespace CrossDoxApiDemo
                 throw new SecurityException(); // Do error checking
             }
 
-            token = JsonConvert.DeserializeObject<string>(resp.Content.ReadAsStringAsync().Result);
+            SessionToken = JsonConvert.DeserializeObject<string>(resp.Content.ReadAsStringAsync().Result);
         }
 
-        public CrossDoxParsedData ParseFiles(FileInfo[] files)
+        private HttpResponseMessage SendParseRequest(string apiPath, FileInfo[] files)
         {
-            string ApiPath = "UploadApi/ParseXLSX";
-            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + ApiPath);
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + apiPath);
 
-            req.Headers.Add("Token", token);
+            req.Headers.Add("Token", SessionToken);
 
             using var formData = new MultipartFormDataContent();
             foreach (FileInfo file in files)
@@ -55,7 +52,14 @@ namespace CrossDoxApiDemo
             }
             req.Content = formData;
 
-            var resp = client.SendAsync(req).Result;
+            return client.SendAsync(req).Result;
+        }
+
+        public CrossDoxParsedData ParseFilesToXLSX(FileInfo[] files)
+        {
+            string ApiPath = "UploadApi/ParseXLSX";
+
+            var resp = SendParseRequest(ApiPath, files);
             if (!resp.IsSuccessStatusCode)
             {
                 return null; // Do error checking
@@ -64,13 +68,25 @@ namespace CrossDoxApiDemo
             return JsonConvert.DeserializeObject<CrossDoxParsedData>(resp.Content.ReadAsStringAsync().Result);
         }
 
+        public ParseInfoResponse ParseFilesToJSON(FileInfo[] files)
+        {
+            string ApiPath = "UploadApi/ParseJSON";
+
+            var resp = SendParseRequest(ApiPath, files);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return null; // Do error checking
+            }
+
+            return JsonConvert.DeserializeObject<ParseInfoResponse>(resp.Content.ReadAsStringAsync().Result);
+        }
+
         public void UpdateUserPreferences(CrossDoxUserPreferences usersPreferencesModel)
         {
             string ApiPath = "UsersApi/Preferences";
             HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Post, ApiUrl + ApiPath);
 
-            req.Headers.Add("ApiToken", apiToken);
-            req.Headers.Add("Token", token);
+            req.Headers.Add("Token", SessionToken);
 
             req.Content = ToContent(usersPreferencesModel);
 
@@ -81,12 +97,12 @@ namespace CrossDoxApiDemo
             }
         }
 
-        private static StringContent ToContent(object payload)
+        private static StringContent ToContent(Object payload)
         {
-            return ToStringContent(JsonConvert.SerializeObject(payload));
+            return ToContent(JsonConvert.SerializeObject(payload));
         }
 
-        private static StringContent ToStringContent(string serialized)
+        private static StringContent ToContent(string serialized)
         {
             return new StringContent(serialized, Encoding.Default, "application/json");
         }
